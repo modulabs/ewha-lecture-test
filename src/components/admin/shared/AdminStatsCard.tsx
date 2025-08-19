@@ -1,4 +1,5 @@
 import React from 'react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface AdminStatsCardProps {
@@ -6,7 +7,7 @@ interface AdminStatsCardProps {
   value: string | number;
   subtitle?: string;
   icon?: LucideIcon;
-  color?: 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'purple';
+  color?: 'blue' | 'green' | 'amber' | 'red' | 'indigo' | 'purple' | 'gray';
   trend?: {
     value: number;
     isPositive: boolean;
@@ -21,67 +22,53 @@ export const AdminStatsCard: React.FC<AdminStatsCardProps> = ({
   color = 'blue',
   trend
 }) => {
-  const colorConfig = {
-    blue: {
-      bg: 'bg-blue-50',
-      icon: 'text-blue-600',
-      accent: 'border-blue-200'
-    },
-    green: {
-      bg: 'bg-green-50',
-      icon: 'text-green-600',
-      accent: 'border-green-200'
-    },
-    amber: {
-      bg: 'bg-amber-50',
-      icon: 'text-amber-600',
-      accent: 'border-amber-200'
-    },
-    red: {
-      bg: 'bg-red-50',
-      icon: 'text-red-600',
-      accent: 'border-red-200'
-    },
-    gray: {
-      bg: 'bg-gray-50',
-      icon: 'text-gray-600',
-      accent: 'border-gray-200'
-    },
-    purple: {
-      bg: 'bg-purple-50',
-      icon: 'text-purple-600',
-      accent: 'border-purple-200'
-    }
+  const colorClasses = {
+    blue: 'border-blue-200 bg-blue-50',
+    green: 'border-green-200 bg-green-50',
+    amber: 'border-amber-200 bg-amber-50',
+    red: 'border-red-200 bg-red-50',
+    indigo: 'border-indigo-200 bg-indigo-50',
+    purple: 'border-purple-200 bg-purple-50',
+    gray: 'border-gray-200 bg-gray-50'
   };
 
-  const config = colorConfig[color];
+  const iconColorClasses = {
+    blue: 'text-blue-600',
+    green: 'text-green-600',
+    amber: 'text-amber-600',
+    red: 'text-red-600',
+    indigo: 'text-indigo-600',
+    purple: 'text-purple-600',
+    gray: 'text-gray-600'
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-      <div className="flex items-center">
-        {Icon && (
-          <div className={`p-2 rounded-lg ${config.bg} mr-4`}>
-            <Icon size={24} className={config.icon} />
-          </div>
-        )}
+    <div className={`bg-white rounded-lg shadow-sm border-l-4 p-6 ${colorClasses[color]}`}>
+      <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600">{title}</p>
-          <div className="flex items-baseline">
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {trend && (
-              <span
-                className={`ml-2 text-sm font-medium ${
-                  trend.isPositive ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {trend.isPositive ? '+' : '-'}{Math.abs(trend.value)}%
-              </span>
-            )}
-          </div>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
           {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+            <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+          )}
+          {trend && (
+            <div className="mt-2 flex items-center">
+              {trend.isPositive ? (
+                <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+              )}
+              <span className={`text-sm font-medium ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                {trend.value}%
+              </span>
+            </div>
           )}
         </div>
+        {Icon && (
+          <div className={`p-3 rounded-full bg-white ${iconColorClasses[color]}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+        )}
       </div>
     </div>
   );

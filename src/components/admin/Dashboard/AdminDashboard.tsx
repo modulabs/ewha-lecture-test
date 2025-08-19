@@ -1,147 +1,186 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, FileText, Clock, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
 import { AdminStatsCard } from '../shared/AdminStatsCard';
 import { AdminTable } from '../shared/AdminTable';
 import { StatusBadge } from '../shared/StatusBadge';
 import { ContentLockControl } from '../ContentLock/ContentLockControl';
-import type { AdminStats, RecentActivity, Submission, AdminTableColumn } from '../../../types/admin';
+import type { TableColumn } from '../shared/AdminTable';
+import { userApi } from '../../../services/userApi';
+import { assignmentApi } from '../../../services/assignmentApi';
+import type { AssignmentSubmission } from '../../../services/assignmentApi';
 
-// Mock data - 실제로는 API에서 가져올 데이터
-const mockStats: AdminStats = {
-  studentsTotal: 120,
-  studentsRegistered: 85,
-  studentsActiveToday: 42,
-  assignmentsPending: 25,
-  assignmentsTotal: 15,
-  avgScore: 82.5,
-  completionRate: 67.5
-};
+interface AdminStats {
+  studentsTotal: number;
+  studentsRegistered: number;
+  studentsActiveToday: number;
+  assignmentsPending: number;
+  assignmentsTotal: number;
+  avgScore: number;
+  completionRate: number;
+}
 
-const mockRecentActivity: RecentActivity[] = [
-  {
-    id: '1',
-    type: 'assignment_submitted',
-    title: 'Day 1 최종 과제 제출',
-    studentName: '김이화',
-    assignmentTitle: 'AI 에이전트 개념 정리',
-    timestamp: '2025-01-17T10:30:00Z'
-  },
-  {
-    id: '2',
-    type: 'student_registered',
-    title: '신규 학생 가입',
-    studentName: '박학생',
-    timestamp: '2025-01-17T09:15:00Z'
-  },
-  {
-    id: '3',
-    type: 'assignment_reviewed',
-    title: '과제 검토 완료',
-    studentName: '이수연',
-    assignmentTitle: 'Streamlit 배포 실습',
-    timestamp: '2025-01-17T08:45:00Z'
-  }
-];
+interface RecentActivity {
+  id: string;
+  type: 'assignment_submitted' | 'student_registered' | 'assignment_reviewed';
+  title: string;
+  studentName: string;
+  assignmentTitle?: string;
+  timestamp: string;
+}
 
-const mockRecentSubmissions: Submission[] = [
-  {
-    id: '1',
-    assignmentId: 'assignment-1',
-    assignment: {
-      id: 'assignment-1',
-      title: 'Day 1 최종 과제: AI 에이전트 개념 정리',
-      dueDate: '2025-01-20T23:59:59Z'
-    },
-    student: {
-      id: 'student-1',
-      name: '김이화',
-      email: 'student1@ewha.ac.kr',
-      studentId: '2024123456',
-      cohort: '2024-08'
-    },
-    fileName: 'day1_assignment.pdf',
-    fileUrl: '/uploads/assignments/day1_assignment.pdf',
-    fileSizeBytes: 1024000,
-    comments: '과제 제출합니다. 피드백 부탁드립니다.',
-    submittedAt: '2025-01-17T10:30:00Z',
-    reviewStatus: 'pending'
-  },
-  {
-    id: '2',
-    assignmentId: 'assignment-2',
-    assignment: {
-      id: 'assignment-2',
-      title: 'Day 2 중간 과제: RAG 시스템 구현',
-      dueDate: '2025-01-21T23:59:59Z'
-    },
-    student: {
-      id: 'student-2',
-      name: '박학생',
-      email: 'student2@ewha.ac.kr',
-      studentId: '2024123457',
-      cohort: '2024-08'
-    },
-    fileName: 'rag_implementation.zip',
-    fileUrl: '/uploads/assignments/rag_implementation.zip',
-    fileSizeBytes: 5120000,
-    submittedAt: '2025-01-17T09:15:00Z',
-    reviewStatus: 'approved',
-    score: 95,
-    feedback: '훌륭한 구현입니다!'
-  }
-];
 
 export const AdminDashboard: React.FC = () => {
-  const submissionColumns: AdminTableColumn<Submission>[] = [
+  const [stats, setStats] = useState<AdminStats>({
+    studentsTotal: 0,
+    studentsRegistered: 0,
+    studentsActiveToday: 0,
+    assignmentsPending: 0,
+    assignmentsTotal: 0,
+    avgScore: 0,
+    completionRate: 0
+  });
+  const [recentSubmissions, setRecentSubmissions] = useState<AssignmentSubmission[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 병렬로 API 호출
+      const [userStatsRes, allSubmissionsRes, templatesRes] = await Promise.all([
+        userApi.getUserStats().catch(() => null),
+        assignmentApi.getAllSubmissions().catch(() => null),
+        assignmentApi.getTemplates().catch(() => null)
+      ]);
+
+      // 통계 계산
+      if (userStatsRes?.success) {
+        const userStats = userStatsRes.data;
+        
+        // 제출 통계 계산
+        const pendingCount = allSubmissionsRes?.data?.filter(
+          (s: AssignmentSubmission) => s.status === 'submitted'
+        ).length || 0;
+        
+        const reviewedCount = allSubmissionsRes?.data?.filter(
+          (s: AssignmentSubmission) => s.status === 'reviewed'
+        ).length || 0;
+        
+        const totalSubmissions = allSubmissionsRes?.data?.length || 0;
+        const completionRate = totalSubmissions > 0 
+          ? (reviewedCount / totalSubmissions) * 100 
+          : 0;
+
+        setStats({
+          studentsTotal: userStats.total_users || 0,
+          studentsRegistered: userStats.active_users || 0,
+          studentsActiveToday: Math.floor((userStats.active_users || 0) * 0.35), // 임시 계산
+          assignmentsPending: pendingCount,
+          assignmentsTotal: templatesRes?.data?.length || 0,
+          avgScore: 82.5, // 나중에 실제 점수 계산 추가
+          completionRate: Math.round(completionRate * 10) / 10
+        });
+      }
+
+      // 최근 제출 과제 설정 (최대 5개)
+      if (allSubmissionsRes?.success) {
+        const sortedSubmissions = allSubmissionsRes.data
+          .sort((a: AssignmentSubmission, b: AssignmentSubmission) => 
+            new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
+          )
+          .slice(0, 5);
+        setRecentSubmissions(sortedSubmissions);
+
+        // 최근 활동 생성
+        const activities: RecentActivity[] = sortedSubmissions.slice(0, 3).map((submission: AssignmentSubmission) => ({
+          id: submission.id,
+          type: submission.status === 'reviewed' ? 'assignment_reviewed' : 'assignment_submitted',
+          title: submission.status === 'reviewed' ? '과제 검토 완료' : '과제 제출',
+          studentName: submission.user?.name || '알 수 없음',
+          assignmentTitle: submission.template?.title || '',
+          timestamp: submission.status === 'reviewed' && submission.reviewed_at 
+            ? submission.reviewed_at 
+            : submission.submitted_at
+        }));
+        setRecentActivity(activities);
+      }
+    } catch (err) {
+      console.error('Dashboard data fetch error:', err);
+      setError('대시보드 데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submissionColumns: TableColumn<AssignmentSubmission>[] = [
     {
       key: 'student',
-      title: '학생',
-      render: (_, record) => (
+      header: '학생',
+      render: (record) => (
         <div>
-          <div className="font-medium">{record.student.name}</div>
-          <div className="text-sm text-gray-500">{record.student.studentId}</div>
+          <div className="font-medium">{record.user?.name || '알 수 없음'}</div>
+          <div className="text-sm text-gray-500">{record.user?.email || ''}</div>
         </div>
       )
     },
     {
       key: 'assignment',
-      title: '과제',
-      render: (_, record) => (
+      header: '과제',
+      render: (record) => (
         <div>
-          <div className="font-medium">{record.assignment.title}</div>
+          <div className="font-medium">{record.template?.title || '과제 정보 없음'}</div>
           <div className="text-sm text-gray-500">
-            마감: {new Date(record.assignment.dueDate).toLocaleDateString()}
+            날짜: {record.template?.assignment_date ? new Date(record.template.assignment_date).toLocaleDateString() : '-'}
           </div>
         </div>
       )
     },
     {
-      key: 'fileName',
-      title: '파일',
-      render: (fileName) => (
-        <span className="text-blue-600 hover:text-blue-800 cursor-pointer">
-          {fileName}
+      key: 'submission',
+      header: '제출 내용',
+      render: (record) => (
+        <span className="text-sm text-gray-600" title={record.submission_text}>
+          {record.submission_text ? 
+            (record.submission_text.length > 50 
+              ? record.submission_text.substring(0, 50) + '...' 
+              : record.submission_text)
+            : '-'
+          }
         </span>
       )
     },
     {
       key: 'submittedAt',
-      title: '제출시간',
-      render: (submittedAt) => (
+      header: '제출시간',
+      render: (record) => (
         <span className="text-sm">
-          {new Date(submittedAt).toLocaleString()}
+          {new Date(record.submitted_at).toLocaleString()}
         </span>
       )
     },
     {
-      key: 'reviewStatus',
-      title: '상태',
-      render: (status) => <StatusBadge status={status} size="sm" />
+      key: 'status',
+      header: '상태',
+      render: (record) => (
+        <StatusBadge 
+          status={record.status === 'reviewed' ? 'approved' : 'pending'} 
+          size="sm" 
+        />
+      )
     },
     {
-      key: 'score',
-      title: '점수',
-      render: (score) => score ? `${score}점` : '-'
+      key: 'feedback',
+      header: '피드백',
+      render: (record) => record.feedback ? 
+        <span className="text-sm text-green-600">완료</span> : 
+        <span className="text-sm text-gray-400">대기</span>
     }
   ];
 
@@ -155,17 +194,39 @@ export const AdminDashboard: React.FC = () => {
     return date.toLocaleDateString();
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">데이터를 불러오는 중...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        {error}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="border-l-4 border-amber-500 bg-amber-50 p-4 rounded-lg">
-        <div className="flex items-center">
+        <div className="flex items-center justify-between">
           <div className="ml-3">
             <h1 className="text-2xl font-bold text-gray-900">관리자 대시보드</h1>
             <p className="text-amber-700">
               이화여자대학교 AI 에이전트 개발 과정 관리 시스템
             </p>
           </div>
+          <button 
+            onClick={fetchDashboardData}
+            className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
+          >
+            새로고침
+          </button>
         </div>
       </div>
 
@@ -173,29 +234,29 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <AdminStatsCard
           title="총 학생 수"
-          value={mockStats.studentsTotal}
-          subtitle={`가입 완료: ${mockStats.studentsRegistered}명`}
+          value={stats.studentsTotal}
+          subtitle={`가입 완료: ${stats.studentsRegistered}명`}
           icon={Users}
           color="blue"
         />
         <AdminStatsCard
           title="오늘 활동"
-          value={mockStats.studentsActiveToday}
+          value={stats.studentsActiveToday}
           subtitle="명이 학습 중"
           icon={TrendingUp}
           color="green"
         />
         <AdminStatsCard
           title="검토 대기"
-          value={mockStats.assignmentsPending}
+          value={stats.assignmentsPending}
           subtitle="건의 과제"
           icon={Clock}
           color="amber"
         />
         <AdminStatsCard
-          title="평균 점수"
-          value={`${mockStats.avgScore}점`}
-          subtitle={`완료율: ${mockStats.completionRate}%`}
+          title="과제 현황"
+          value={`${stats.assignmentsTotal}개`}
+          subtitle={`완료율: ${stats.completionRate}%`}
           icon={CheckCircle}
           color="green"
         />
@@ -207,7 +268,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">실시간 활동</h3>
             <div className="space-y-4">
-              {mockRecentActivity.map((activity) => (
+              {recentActivity.map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
                     {activity.type === 'assignment_submitted' && (
@@ -241,7 +302,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg">
                 <AlertCircle size={16} className="text-red-600" />
                 <div>
-                  <p className="text-sm font-medium text-red-900">검토 대기 {mockStats.assignmentsPending}건</p>
+                  <p className="text-sm font-medium text-red-900">검토 대기 {stats.assignmentsPending}건</p>
                   <p className="text-xs text-red-700">빠른 검토가 필요합니다</p>
                 </div>
               </div>
@@ -263,19 +324,16 @@ export const AdminDashboard: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900">최근 제출 과제</h3>
             </div>
             <AdminTable
-              data={mockRecentSubmissions}
+              data={recentSubmissions}
               columns={submissionColumns}
               actions={[
                 {
-                  key: 'review',
                   label: '검토',
                   variant: 'primary',
-                  onClick: (record) => console.log('Review:', record.id)
-                },
-                {
-                  key: 'download',
-                  label: '다운로드',
-                  onClick: (record) => console.log('Download:', record.fileUrl)
+                  onClick: (record) => {
+                    // 리뷰 페이지로 이동하거나 모달 열기
+                    console.log('Review submission:', record.id);
+                  }
                 }
               ]}
             />

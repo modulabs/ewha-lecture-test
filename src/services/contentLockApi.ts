@@ -1,3 +1,5 @@
+import { useAuthStore } from '../store/authStore';
+
 // API Base URL
 const API_BASE_URL = 'https://modulabs.ddns.net/ewha/api/v1';
 
@@ -42,8 +44,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<any
   // 401 에러 시 토큰 갱신 시도
   if (response.status === 401 && token) {
     try {
-      // 토큰 갱신을 위해 authStore import 필요
-      const { useAuthStore } = await import('../store/authStore');
+      // 토큰 갱신
       const { refreshToken: refresh } = useAuthStore.getState();
       
       await refresh();

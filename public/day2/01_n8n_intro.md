@@ -1,4 +1,3 @@
-
 # 1. n8n 워크플로우 자동화 입문
 
 ## n8n이란?
@@ -13,6 +12,38 @@
 - **Credentials (인증 정보):** 구글, 슬랙 등 외부 서비스에 연결하기 위한 인증 정보를 안전하게 저장하는 곳.
 
 ## 실습 환경 접속
-- [제공된 n8n 사이트](https://modulabs.ddns.net)에 접속합니다.
-- 사전에 등록된 계정 정보를 이용하여 로그인합니다.
-- 등록된 계정 정보를 모른다면, 수강신청한 이메일 메일함을 확인해주세요.
+- 본 교안에 접속해서 보고있는 계정으로 온 메일을 확인해, 회원가입 절차를 완료합니다.
+- 이미 처리했다면, [제공된 n8n 사이트](https://modulabs.ddns.net)에 접속합니다.
+- 등록된 계정 정보를 이용하여 로그인합니다.
+
+## Gemini API 키 발급받기
+
+AI 기반 워크플로우를 만들기 위해 Google의 Gemini API 키를 발급받아야 합니다.
+
+### 1단계: Google AI Studio 접속
+1. [Google AI Studio](https://aistudio.google.com/)에 접속합니다.
+2. Google 계정으로 로그인합니다.
+
+### 2단계: API 키 생성
+1. 좌측 메뉴에서 **"Get API key"** 클릭
+2. **"Create API key"** 버튼 클릭
+3. 프로젝트를 선택하거나 새 프로젝트를 생성
+4. API 키가 생성되면 **복사**하여 안전한 곳에 보관
+
+### 3단계: n8n에서 Gemini API 사용하기
+1. n8n 워크플로우에서 AI Agent Node 추가
+2. AI를 Google Gemini Chat으로 설정
+3. Google Gemini(PaLM) Api account (옆 숫자 무시) 옆의 연필모양을 클릭하여 수정합니다.
+4. API 키를 입력합니다.
+5. 모델은 models/gemini-2.5-flash-lite 를 사용합니다.
+6. 다른 옵션은 만지지 않아도 됩니다.
+7. 아래의 Open chat을 클릭합니다.
+![n8n Chatbot](/ewha-lecture-test/assets/이대수업사진2.png)
+
+### 주의사항
+- **API 키는 절대 공개하지 마세요!** GitHub, 블로그 등에 업로드하지 않도록 주의합니다.
+- n8n의 Credentials 기능을 사용하여 API 키를 안전하게 저장하는 것을 권장합니다.
+- Gemini API는 무료 할당량이 있으니, 조금씩 테스트하세요.
+- 
+
+이제 n8n의 기본 개념과 Gemini API 연동 준비가 완료되었습니다. 다음 단계에서는 실제 워크플로우를 만들어보겠습니다!

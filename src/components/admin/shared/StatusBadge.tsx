@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface StatusBadgeProps {
-  status: 'pending' | 'approved' | 'rejected' | 'registered' | 'blocked' | 'needs_revision';
+  status: 'pending' | 'approved' | 'rejected' | 'registered' | 'blocked' | 'needs_revision' | 'submitted' | 'reviewed' | 'in_progress' | 'completed';
   size?: 'sm' | 'md';
 }
 
@@ -35,6 +35,22 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
     needs_revision: {
       label: '수정필요',
       classes: 'bg-amber-100 text-amber-800'
+    },
+    submitted: {
+      label: '제출됨',
+      classes: 'bg-indigo-100 text-indigo-800'
+    },
+    reviewed: {
+      label: '검토됨',
+      classes: 'bg-purple-100 text-purple-800'
+    },
+    in_progress: {
+      label: '진행중',
+      classes: 'bg-yellow-100 text-yellow-800'
+    },
+    completed: {
+      label: '완료',
+      classes: 'bg-green-100 text-green-800'
     }
   };
 

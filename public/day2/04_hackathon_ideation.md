@@ -31,4 +31,5 @@
 
 ### 과제 진행
 - 배운 내용을 기반으로 구현해볼 최종 프로젝트 구상 및 제출(구글docx)
-- https://docs.google.com/document/d/1FJHjwESYEizg1J_pt5Sf2KYZlmF8KMzNrak5GGesA-g/edit?tab=t.0
+- [제출 양식](https://docs.google.com/document/d/1FJHjwESYEizg1J_pt5Sf2KYZlmF8KMzNrak5GGesA-g/edit?tab=t.0)
+- 위 양식의 사본만들기를 진행해서 hc.cho@modulabs.co.kr 권한 공유를 해서 제출

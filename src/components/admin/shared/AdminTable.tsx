@@ -1,132 +1,135 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { AdminTableColumn, AdminTableAction, PaginationData } from '../../../types/admin';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+
+export interface TableColumn<T> {
+  key: keyof T | string;
+  header: string;
+  render?: (item: T) => React.ReactNode;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+}
+
+export interface TableAction<T> {
+  label: string;
+  onClick: (item: T) => void;
+  variant?: 'primary' | 'secondary' | 'danger';
+  icon?: React.ReactNode;
+}
+
+export interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}
 
 interface AdminTableProps<T> {
   data: T[];
-  columns: AdminTableColumn<T>[];
-  actions?: AdminTableAction<T>[];
-  pagination?: PaginationData;
-  onPageChange?: (page: number) => void;
+  columns: TableColumn<T>[];
+  actions?: TableAction<T>[];
+  pagination?: PaginationProps;
+  selectable?: boolean;
+  onSelectionChange?: (selectedItems: T[]) => void;
   loading?: boolean;
   emptyMessage?: string;
 }
 
-export function AdminTable<T extends { id: string }>({
+export function AdminTable<T extends { id: string | number }>({
   data,
   columns,
   actions,
   pagination,
-  onPageChange,
+  selectable = false,
+  onSelectionChange,
   loading = false,
   emptyMessage = '데이터가 없습니다.'
 }: AdminTableProps<T>) {
-  const renderCell = (column: AdminTableColumn<T>, record: T) => {
-    if (column.render) {
-      return column.render(record[column.key as keyof T], record);
+  const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const newSelection = new Set(data.map(item => item.id));
+      setSelectedItems(newSelection);
+      onSelectionChange?.(data);
+    } else {
+      setSelectedItems(new Set());
+      onSelectionChange?.([]);
     }
-    return String(record[column.key as keyof T] || '');
   };
 
-  const renderActions = (record: T) => {
-    if (!actions || actions.length === 0) return null;
-
-    return (
-      <div className="flex items-center space-x-2">
-        {actions.map((action) => {
-          const isDisabled = action.disabled?.(record) || false;
-          const Icon = action.icon;
-          
-          return (
-            <button
-              key={action.key}
-              onClick={() => !isDisabled && action.onClick(record)}
-              disabled={isDisabled}
-              className={`
-                px-3 py-1 text-sm font-medium rounded border transition-colors
-                ${action.variant === 'danger' 
-                  ? 'border-red-300 text-red-700 hover:bg-red-50 disabled:text-red-300'
-                  : action.variant === 'primary'
-                  ? 'border-blue-300 text-blue-700 hover:bg-blue-50 disabled:text-blue-300'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50 disabled:text-gray-300'
-                }
-                disabled:cursor-not-allowed disabled:hover:bg-transparent
-              `}
-            >
-              <div className="flex items-center space-x-1">
-                {Icon && <Icon size={14} />}
-                <span>{action.label}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    );
+  const handleSelectItem = (itemId: string | number, checked: boolean) => {
+    const newSelection = new Set(selectedItems);
+    if (checked) {
+      newSelection.add(itemId);
+    } else {
+      newSelection.delete(itemId);
+    }
+    setSelectedItems(newSelection);
+    
+    const selectedData = data.filter(item => newSelection.has(item.id));
+    onSelectionChange?.(selectedData);
   };
 
-  const renderPagination = () => {
-    if (!pagination || !onPageChange) return null;
-
-    const { currentPage, totalPages, totalCount, limit } = pagination;
-    const start = (currentPage - 1) * limit + 1;
-    const end = Math.min(currentPage * limit, totalCount);
-
-    return (
-      <div className="flex items-center justify-between px-6 py-3 bg-white border-t border-gray-200">
-        <div className="flex items-center text-sm text-gray-700">
-          <span>
-            {totalCount > 0 ? `${start}-${end}` : '0'} / {totalCount}개 항목
-          </span>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage <= 1}
-            className="p-2 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          
-          <span className="px-3 py-1 text-sm font-medium">
-            {currentPage} / {totalPages}
-          </span>
-          
-          <button
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            className="p-2 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      </div>
-    );
+  const getActionButtonClass = (variant?: 'primary' | 'secondary' | 'danger') => {
+    switch (variant) {
+      case 'primary':
+        return 'bg-blue-600 text-white hover:bg-blue-700';
+      case 'danger':
+        return 'bg-red-600 text-white hover:bg-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+    }
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">로딩 중...</p>
+      <div className="bg-white rounded-lg shadow-sm p-8">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="h-12 bg-gray-100 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-8">
+        <div className="text-center text-gray-500">
+          {emptyMessage}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              {selectable && (
+                <th className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={selectedItems.size === data.length && data.length > 0}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className={`px-6 py-3 text-${column.align || 'left'} text-xs font-medium text-gray-500 uppercase tracking-wider`}
                   style={{ width: column.width }}
                 >
-                  {column.title}
+                  {column.header}
                 </th>
               ))}
               {actions && actions.length > 0 && (
@@ -137,38 +140,100 @@ export function AdminTable<T extends { id: string }>({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {data.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={columns.length + (actions ? 1 : 0)}
-                  className="px-6 py-8 text-center text-gray-500"
-                >
-                  {emptyMessage}
-                </td>
+            {data.map((item) => (
+              <tr key={item.id} className="hover:bg-gray-50">
+                {selectable && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={selectedItems.has(item.id)}
+                      onChange={(e) => handleSelectItem(item.id, e.target.checked)}
+                    />
+                  </td>
+                )}
+                {columns.map((column) => (
+                  <td
+                    key={String(column.key)}
+                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-${column.align || 'left'}`}
+                  >
+                    {column.render 
+                      ? column.render(item)
+                      : String(item[column.key as keyof T] || '')}
+                  </td>
+                ))}
+                {actions && actions.length > 0 && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end gap-2">
+                      {actions.map((action, actionIndex) => (
+                        <button
+                          key={actionIndex}
+                          onClick={() => action.onClick(item)}
+                          className={`inline-flex items-center px-3 py-1 text-sm rounded-md transition-colors ${getActionButtonClass(action.variant)}`}
+                        >
+                          {action.icon && <span className="mr-1">{action.icon}</span>}
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  </td>
+                )}
               </tr>
-            ) : (
-              data.map((record) => (
-                <tr key={record.id} className="hover:bg-gray-50">
-                  {columns.map((column) => (
-                    <td
-                      key={String(column.key)}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                    >
-                      {renderCell(column, record)}
-                    </td>
-                  ))}
-                  {actions && actions.length > 0 && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {renderActions(record)}
-                    </td>
-                  )}
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>
-      {renderPagination()}
+
+      {pagination && (
+        <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              총 <span className="font-medium">{pagination.totalItems}</span>개 중{' '}
+              <span className="font-medium">
+                {(pagination.currentPage - 1) * pagination.pageSize + 1}
+              </span>
+              -{' '}
+              <span className="font-medium">
+                {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)}
+              </span>
+              개 표시
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => pagination.onPageChange(1)}
+                disabled={pagination.currentPage === 1}
+                className="p-1 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronsLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+                className="p-1 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="px-3 text-sm text-gray-700">
+                {pagination.currentPage} / {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+                className="p-1 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => pagination.onPageChange(pagination.totalPages)}
+                disabled={pagination.currentPage === pagination.totalPages}
+                className="p-1 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronsRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

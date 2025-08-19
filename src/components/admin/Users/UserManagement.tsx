@@ -4,7 +4,8 @@ import { AdminTable } from '../shared/AdminTable';
 import { AdminStatsCard } from '../shared/AdminStatsCard';
 import { UserBulkUpload } from './UserBulkUpload';
 import { userApi } from '../../../services/userApi';
-import type { User, UserStats, AdminTableColumn } from '../../../types/admin';
+import type { TableColumn } from '../shared/AdminTable';
+import type { User, UserStats } from '../../../services/userApi';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -89,11 +90,11 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const userColumns: AdminTableColumn<User>[] = [
+  const userColumns: TableColumn<User>[] = [
     {
       key: 'name',
-      title: '사용자',
-      render: (_, record) => (
+      header: '사용자',
+      render: (record) => (
         <div>
           <div className="font-medium text-gray-900">{record.name}</div>
           <div className="text-sm text-gray-500">{record.email}</div>
@@ -105,45 +106,45 @@ export const UserManagement: React.FC = () => {
     },
     {
       key: 'role',
-      title: '역할',
-      render: (role) => (
+      header: '역할',
+      render: (record) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          role === 'admin' ? 'bg-purple-100 text-purple-800' :
-          role === 'instructor' ? 'bg-blue-100 text-blue-800' :
+          record.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+          record.role === 'instructor' ? 'bg-blue-100 text-blue-800' :
           'bg-gray-100 text-gray-800'
         }`}>
-          {role === 'admin' ? '관리자' : 
-           role === 'instructor' ? '강사' : '학생'}
+          {record.role === 'admin' ? '관리자' : 
+           record.role === 'instructor' ? '강사' : '학생'}
         </span>
       )
     },
     {
       key: 'cohort',
-      title: '기수',
-      render: (cohort) => cohort || '-'
+      header: '기수',
+      render: (record) => record.cohort || '-'
     },
     {
       key: 'department',
-      title: '학과',
-      render: (department) => department || '-'
+      header: '학과',
+      render: (record) => record.department || '-'
     },
     {
       key: 'is_active',
-      title: '상태',
-      render: (isActive) => (
+      header: '상태',
+      render: (record) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          record.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
-          {isActive ? '활성' : '비활성'}
+          {record.is_active ? '활성' : '비활성'}
         </span>
       )
     },
     {
       key: 'created_at',
-      title: '가입일',
-      render: (createdAt) => (
+      header: '가입일',
+      render: (record) => (
         <span className="text-sm text-gray-600">
-          {new Date(createdAt).toLocaleDateString()}
+          {new Date(record.created_at).toLocaleDateString()}
         </span>
       )
     }
@@ -304,24 +305,21 @@ export const UserManagement: React.FC = () => {
           columns={userColumns}
           actions={[
             {
-              key: 'edit',
               label: '수정',
-              icon: Edit2,
+              icon: <Edit2 size={16} />,
               onClick: () => alert('사용자 수정 기능은 추후 구현 예정입니다.')
             },
             {
-              key: 'toggle-status',
               label: '상태변경',
-              icon: UserCheck,
+              icon: <UserCheck size={16} />,
               onClick: handleToggleUserStatus,
-              variant: 'secondary'
+              variant: 'secondary' as const
             },
             {
-              key: 'delete',
               label: '삭제',
-              icon: Trash2,
+              icon: <Trash2 size={16} />,
               onClick: handleDeleteUser,
-              variant: 'danger'
+              variant: 'danger' as const
             }
           ]}
           loading={loading}

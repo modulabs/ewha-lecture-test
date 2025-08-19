@@ -1,74 +1,96 @@
-import React, { useState } from 'react';
-import { Upload, Search, UserPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, Search, UserPlus, AlertCircle } from 'lucide-react';
 import { AdminTable } from '../shared/AdminTable';
 import { StatusBadge } from '../shared/StatusBadge';
 import { AdminStatsCard } from '../shared/AdminStatsCard';
-import type { Student, AdminTableColumn, PaginationData, UploadResult } from '../../../types/admin';
+import { userApi } from '../../../services/userApi';
+import type { TableColumn, PaginationProps } from '../shared/AdminTable';
+import type { User, UserStats, BulkCreateResult } from '../../../services/userApi';
 
-// Mock data
-const mockStudents: Student[] = [
-  {
-    id: '1',
-    name: '김이화',
-    email: 'student1@ewha.ac.kr',
-    studentId: '2024123456',
-    department: '컴퓨터공학과',
-    cohort: '2024-08',
-    status: 'registered',
-    uploadedAt: '2025-01-01T00:00:00Z',
-    registeredAt: '2025-01-02T10:30:00Z',
-    uploadedByName: '관리자',
-    totalLearningTime: 480,
-    completedItems: 8
-  },
-  {
-    id: '2',
-    name: '박학생',
-    email: 'student2@ewha.ac.kr',
-    studentId: '2024123457',
-    department: 'AI학과',
-    cohort: '2024-08',
-    status: 'pending',
-    uploadedAt: '2025-01-15T00:00:00Z',
-    uploadedByName: '관리자',
-    totalLearningTime: 0,
-    completedItems: 0
-  },
-  {
-    id: '3',
-    name: '이수연',
-    email: 'student3@ewha.ac.kr',
-    studentId: '2024123458',
-    department: '데이터사이언스과',
-    cohort: '2024-08',
-    status: 'blocked',
-    uploadedAt: '2025-01-01T00:00:00Z',
-    registeredAt: '2025-01-03T14:20:00Z',
-    uploadedByName: '관리자',
-    notes: '부적절한 행동으로 인한 차단',
-    totalLearningTime: 120,
-    completedItems: 2
-  }
-];
+interface Student extends User {
+  studentId: string;
+  status: 'pending' | 'registered' | 'blocked';
+  totalLearningTime?: number;
+  completedItems?: number;
+}
 
-const mockPagination: PaginationData = {
-  currentPage: 1,
-  totalPages: 3,
-  totalCount: 120,
-  limit: 50
-};
 
 export const StudentManagement: React.FC = () => {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCohort, setSelectedCohort] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<BulkCreateResult | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const pageSize = 50;
 
-  const studentColumns: AdminTableColumn<Student>[] = [
+  // Data fetching functions
+  const fetchStudents = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await userApi.getAllUsers({
+        role: 'student', // Only fetch students
+        cohort: selectedCohort === 'all' ? undefined : selectedCohort,
+        search: searchQuery || undefined,
+        skip: (currentPage - 1) * pageSize,
+        limit: pageSize,
+      });
+
+      if (response.success) {
+        let studentsData: Student[] = response.data.map((user: User) => ({
+          ...user,
+          studentId: user.student_id || '',
+          status: (user.is_active ? 'registered' : 'pending') as 'pending' | 'registered' | 'blocked',
+          totalLearningTime: 0, // TODO: Get from learning analytics API
+          completedItems: 0, // TODO: Get from progress API
+        }));
+
+        // Apply status filter on client side
+        if (selectedStatus !== 'all') {
+          studentsData = studentsData.filter(student => student.status === selectedStatus);
+        }
+
+        setStudents(studentsData);
+        setTotalItems(response.total || 0);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch students');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchUserStats = async () => {
+    try {
+      const response = await userApi.getUserStats();
+      if (response.success) {
+        setUserStats(response.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch user stats:', err);
+    }
+  };
+
+  // Load data on mount and when filters change
+  useEffect(() => {
+    fetchStudents();
+  }, [currentPage, selectedCohort, selectedStatus, searchQuery]);
+
+  useEffect(() => {
+    fetchUserStats();
+  }, []);
+
+  const studentColumns: TableColumn<Student>[] = [
     {
       key: 'name',
-      title: '이름',
-      render: (_, record) => (
+      header: '이름',
+      render: (record) => (
         <div>
           <div className="font-medium">{record.name}</div>
           <div className="text-sm text-gray-500">{record.email}</div>
@@ -76,41 +98,44 @@ export const StudentManagement: React.FC = () => {
       )
     },
     {
-      key: 'studentId',
-      title: '학번',
+      key: 'student_id',
+      header: '학번',
+      render: (record) => record.student_id || '-',
       width: '120px'
     },
     {
       key: 'department',
-      title: '학과',
+      header: '학과',
+      render: (record) => record.department || '-',
       width: '150px'
     },
     {
       key: 'cohort',
-      title: '기수',
+      header: '기수',
+      render: (record) => record.cohort || '-',
       width: '100px'
     },
     {
       key: 'status',
-      title: '상태',
-      render: (status) => <StatusBadge status={status} size="sm" />,
+      header: '상태',
+      render: (record) => <StatusBadge status={record.status} size="sm" />,
       width: '100px'
     },
     {
-      key: 'registeredAt',
-      title: '가입일',
-      render: (registeredAt) => 
-        registeredAt ? new Date(registeredAt).toLocaleDateString() : '-',
+      key: 'created_at',
+      header: '가입일',
+      render: (record) => 
+        record.created_at ? new Date(record.created_at).toLocaleDateString() : '-',
       width: '120px'
     },
     {
       key: 'completedItems',
-      title: '진행도',
-      render: (completedItems, _record) => (
+      header: '진행도',
+      render: (record) => (
         <div>
-          <div className="text-sm font-medium">{completedItems}/15</div>
+          <div className="text-sm font-medium">{record.completedItems || 0}/15</div>
           <div className="text-xs text-gray-500">
-            {Math.round((completedItems / 15) * 100)}%
+            {Math.round(((record.completedItems || 0) / 15) * 100)}%
           </div>
         </div>
       ),
@@ -118,46 +143,56 @@ export const StudentManagement: React.FC = () => {
     }
   ];
 
-  const handleStatusChange = (student: Student, newStatus: Student['status']) => {
-    console.log(`Changing status of ${student.name} to ${newStatus}`);
-    // 실제로는 API 호출
+  const handleStatusChange = async (student: Student, newStatus: Student['status']) => {
+    try {
+      setIsLoading(true);
+      const isActive = newStatus === 'registered';
+      await userApi.toggleUserStatus(student.id, isActive);
+      
+      // Refresh the data
+      await fetchStudents();
+      await fetchUserStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update user status');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // 실제로는 FormData로 API에 업로드
-    console.log('Uploading file:', file.name);
-    
-    // Mock upload result
-    const mockResult: UploadResult = {
-      totalRows: 30,
-      successfulImports: 28,
-      skippedDuplicates: 2,
-      errors: 0,
-      cohort: '2024-08'
-    };
-    
-    alert(`업로드 완료!\n성공: ${mockResult.successfulImports}건\n중복: ${mockResult.skippedDuplicates}건`);
-    setShowUploadModal(false);
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await userApi.bulkCreateUsers(file);
+      
+      if (response.success) {
+        setUploadResult(response.data);
+        await fetchStudents();
+        await fetchUserStats();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload users');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const filteredStudents = mockStudents.filter(student => {
-    const matchesSearch = student.name.includes(searchQuery) || 
-                         student.email.includes(searchQuery) ||
-                         student.studentId.includes(searchQuery);
-    const matchesCohort = selectedCohort === 'all' || student.cohort === selectedCohort;
-    const matchesStatus = selectedStatus === 'all' || student.status === selectedStatus;
-    
-    return matchesSearch && matchesCohort && matchesStatus;
-  });
+  // Pagination setup
+  const pagination: PaginationProps = {
+    currentPage,
+    totalPages: Math.ceil(totalItems / pageSize),
+    totalItems,
+    pageSize,
+    onPageChange: setCurrentPage
+  };
 
-  const summary = {
-    total: 120,
-    registered: 85,
-    pending: 30,
-    blocked: 5
+  const handleEditStudent = (student: Student) => {
+    // TODO: Implement edit student modal
+    console.log('Edit student:', student.id);
   };
 
   return (
@@ -168,31 +203,63 @@ export const StudentManagement: React.FC = () => {
         <p className="text-amber-700">허용된 학생 명단 및 상태 관리</p>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+          <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
+          <div className="text-red-700">{error}</div>
+          <button 
+            onClick={() => setError(null)}
+            className="ml-auto text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Upload Result Display */}
+      {uploadResult && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <h3 className="font-medium text-green-800 mb-2">업로드 완료!</h3>
+          <div className="text-sm text-green-700">
+            <p>생성: {uploadResult.created_count}명</p>
+            <p>건너뜀: {uploadResult.skipped_count}명</p>
+            <p>오류: {uploadResult.error_count}명</p>
+          </div>
+          <button 
+            onClick={() => setUploadResult(null)}
+            className="mt-2 text-green-500 hover:text-green-700 text-sm"
+          >
+            닫기
+          </button>
+        </div>
+      )}
+
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <AdminStatsCard
           title="총 학생 수"
-          value={summary.total}
+          value={userStats?.total_users || 0}
           icon={UserPlus}
           color="blue"
         />
         <AdminStatsCard
-          title="가입 완료"
-          value={summary.registered}
+          title="활성 사용자"
+          value={userStats?.active_users || 0}
           icon={UserPlus}
           color="green"
         />
         <AdminStatsCard
-          title="가입 대기"
-          value={summary.pending}
+          title="비활성 사용자"
+          value={userStats?.inactive_users || 0}
           icon={UserPlus}
           color="amber"
         />
         <AdminStatsCard
-          title="차단됨"
-          value={summary.blocked}
+          title="학생"
+          value={userStats?.role_distribution?.student || 0}
           icon={UserPlus}
-          color="red"
+          color="blue"
         />
       </div>
 
@@ -246,33 +313,36 @@ export const StudentManagement: React.FC = () => {
       </div>
 
       {/* Students Table */}
-      <AdminTable
-        data={filteredStudents}
-        columns={studentColumns}
-        actions={[
-          {
-            key: 'approve',
-            label: '승인',
-            variant: 'primary',
-            onClick: (record) => handleStatusChange(record, 'registered'),
-            disabled: (record) => record.status === 'registered'
-          },
-          {
-            key: 'block',
-            label: '차단',
-            variant: 'danger',
-            onClick: (record) => handleStatusChange(record, 'blocked'),
-            disabled: (record) => record.status === 'blocked'
-          },
-          {
-            key: 'edit',
-            label: '편집',
-            onClick: (record) => console.log('Edit student:', record.id)
-          }
-        ]}
-        pagination={mockPagination}
-        onPageChange={(page) => console.log('Page changed:', page)}
-      />
+      {isLoading ? (
+        <div className="bg-white rounded-lg shadow-sm p-12 border border-gray-200">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">데이터를 불러오는 중...</span>
+          </div>
+        </div>
+      ) : (
+        <AdminTable
+          data={students}
+          columns={studentColumns}
+          actions={[
+            {
+              label: '승인',
+              variant: 'primary',
+              onClick: (record) => handleStatusChange(record, 'registered')
+            },
+            {
+              label: '차단',
+              variant: 'danger',
+              onClick: (record) => handleStatusChange(record, 'blocked')
+            },
+            {
+              label: '편집',
+              onClick: handleEditStudent
+            }
+          ]}
+          pagination={pagination}
+        />
+      )}
 
       {/* Upload Modal */}
       {showUploadModal && (
@@ -308,12 +378,17 @@ export const StudentManagement: React.FC = () => {
                   onChange={handleFileUpload}
                   className="hidden"
                   id="csv-upload"
+                  disabled={isLoading}
                 />
                 <label
                   htmlFor="csv-upload"
-                  className="inline-block px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700"
+                  className={`inline-block px-4 py-2 text-white rounded cursor-pointer ${
+                    isLoading 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
                 >
-                  파일 선택
+                  {isLoading ? '업로드 중...' : '파일 선택'}
                 </label>
               </div>
             </div>

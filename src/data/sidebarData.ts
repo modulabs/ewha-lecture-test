@@ -63,7 +63,7 @@ export const sidebarData: SidebarItem[] = [
       },
       {
         id: 'day2-03',
-        title: '3. 성공적인 프로젝트를 위한 협업 및 기획 전략',
+        title: '3. 따끈따끈한 트렌드 AI',
         path: '/day2/03_collaboration_strategy'
       },
       {

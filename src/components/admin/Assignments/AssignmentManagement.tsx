@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Users, Clock, Star, Plus } from 'lucide-react';
+import { FileText, Users, Clock, Star, Plus, AlertCircle } from 'lucide-react';
 import { AdminTable } from '../shared/AdminTable';
 import { AdminStatsCard } from '../shared/AdminStatsCard';
-import type { AdminTableColumn } from '../../../types/admin';
 import { assignmentApi } from '../../../services/assignmentApi';
-import type { AssignmentTemplate, AssignmentSubmission } from '../../../services/assignmentApi';
+import type { TableColumn } from '../shared/AdminTable';
+import type { 
+  AssignmentTemplate, 
+  AssignmentSubmission 
+} from '../../../services/assignmentApi';
 
 // 상태 관리
 interface AssignmentManagementState {
@@ -103,11 +106,11 @@ export const AssignmentManagement: React.FC = () => {
     }
   };
 
-  const submissionColumns: AdminTableColumn<AssignmentSubmission>[] = [
+  const submissionColumns: TableColumn<AssignmentSubmission>[] = [
     {
       key: 'user',
-      title: '학생',
-      render: (_, record) => (
+      header: '학생',
+      render: (record) => (
         <div>
           <div className="font-medium">{record.user?.name || 'Unknown'}</div>
           <div className="text-sm text-gray-500">{record.user?.email}</div>
@@ -116,43 +119,43 @@ export const AssignmentManagement: React.FC = () => {
     },
     {
       key: 'submission_text',
-      title: '제출 내용',
-      render: (submissionText) => (
+      header: '제출 내용',
+      render: (record) => (
         <div className="max-w-xs">
           <div className="text-sm text-gray-700 truncate">
-            {submissionText.substring(0, 100)}{submissionText.length > 100 ? '...' : ''}
+            {record.submission_text.substring(0, 100)}{record.submission_text.length > 100 ? '...' : ''}
           </div>
         </div>
       )
     },
     {
       key: 'submitted_at',
-      title: '제출시간',
-      render: (submittedAt) => (
+      header: '제출시간',
+      render: (record) => (
         <span className="text-sm">
-          {new Date(submittedAt).toLocaleString()}
+          {new Date(record.submitted_at).toLocaleString()}
         </span>
       )
     },
     {
       key: 'status',
-      title: '상태',
-      render: (status) => (
+      header: '상태',
+      render: (record) => (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          status === 'reviewed' 
+          record.status === 'reviewed' 
             ? 'bg-green-100 text-green-800' 
             : 'bg-blue-100 text-blue-800'
         }`}>
-          {status === 'reviewed' ? '검토완료' : '제출완료'}
+          {record.status === 'reviewed' ? '검토완료' : '제출완료'}
         </span>
       )
     },
     {
       key: 'feedback',
-      title: '피드백',
-      render: (feedback) => (
+      header: '피드백',
+      render: (record) => (
         <div className="flex items-center">
-          {feedback ? (
+          {record.feedback ? (
             <span className="text-green-600 text-sm">완료</span>
           ) : (
             <span className="text-gray-400 text-sm">미완료</span>
@@ -239,6 +242,20 @@ export const AssignmentManagement: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Error Display */}
+      {state.error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+          <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
+          <div className="text-red-700">{state.error}</div>
+          <button 
+            onClick={() => setState(prev => ({ ...prev, error: null }))}
+            className="ml-auto text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Assignment Selector */}
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -329,7 +346,6 @@ export const AssignmentManagement: React.FC = () => {
               columns={submissionColumns}
               actions={[
                 {
-                  key: 'review',
                   label: '검토',
                   variant: 'primary',
                   onClick: handleReview
