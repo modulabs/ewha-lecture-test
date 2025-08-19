@@ -38,7 +38,7 @@ AI 기반 워크플로우를 만들기 위해 Google의 Gemini API 키를 발급
 5. 모델은 models/gemini-2.5-flash-lite 를 사용합니다.
 6. 다른 옵션은 만지지 않아도 됩니다.
 7. 아래의 Open chat을 클릭합니다.
-![n8n Chatbot](/ewha-lecture-test/assets/이대수업사진1.png)
+![n8n Chatbot](/ewha-lecture-test/assets/이대수업사진2.png)
 
 ### 주의사항
 - **API 키는 절대 공개하지 마세요!** GitHub, 블로그 등에 업로드하지 않도록 주의합니다.
