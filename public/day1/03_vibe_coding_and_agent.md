@@ -1,6 +1,6 @@
 # 1시간 만에 AI 코더 되기: 파이썬으로 시작하는 개발 첫걸음
 
-![바이브 코딩 VS Code 화면](/ewha-lecture/assets/이대수업사진1.png)
+![바이브 코딩 VS Code 화면](/ewha-lecture-test/assets/이대수업사진1.png)
 
 > "1시간 만에, AI 코더로"
 

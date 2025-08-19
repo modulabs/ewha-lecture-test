@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/ewha-lecture/',
+  base: '/ewha-lecture-test/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

@@ -150,7 +150,7 @@ dist/assets/markdown-BGr0mr8O.js      157.33 kB │ gzip:  47.56 kB
 ## 🌐 배포 설정
 
 ### GitHub Pages 배포 준비
-- **Base Path**: `/ewha-lecture/`로 설정됨
+- **Base Path**: `/ewha-lecture-test/`로 설정됨
 - **Router Basename**: React Router에 basename 설정
 - **빌드 출력**: `dist/` 디렉토리
 

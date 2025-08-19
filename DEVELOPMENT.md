@@ -37,7 +37,7 @@ App.tsx (Router, Suspense)
   - **LocalStorage 연동**: 상태 영속화
 
 ### 라우팅 구조
-- **Base Path**: `/ewha-lecture/` (GitHub Pages용)
+- **Base Path**: `/ewha-lecture-test/` (GitHub Pages용)
 - **URL 패턴**: 
   - `/` → HomePage
   - `/day1/01_onboarding` → SessionPage
@@ -274,7 +274,7 @@ npm run build
 ls -la dist/
 
 # 3. base path 설정 확인
-# vite.config.ts의 base: '/ewha-lecture/'
+# vite.config.ts의 base: '/ewha-lecture-test/'
 # App.tsx의 basename="/ewha-lecture"
 ```
 
